@@ -31,3 +31,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   release candidate — не обновлять не разобравшись.
 - Ручные `EXCLUDE` и `CHECK` в первой миграции при её пересоздании
   переносить руками.
+- Сообщения коммитов — по-английски, Conventional Commits
+  (`type(scope): description`). Комментарии в коде и документация
+  остаются на русском.
