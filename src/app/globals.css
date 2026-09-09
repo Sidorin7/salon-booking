@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/*
+  Дизайн-система «Хронограф».
+  Единственный источник правды по цвету, шрифту и кеглю.
+  Хардкод значений в компонентах — ошибка ревью, а не мелочь.
+*/
+@theme {
+  /* ---- Цвет ----
+     Один акцент на весь проект. Зелёного «успеха» нет намеренно:
+     об успешной записи сообщаем словами, а не цветом. */
+  --color-paper: #fbfaf8; /* фон */
+  --color-ink: #141519; /* основной текст, заливка кнопок */
+  --color-muted: #6e6a63; /* вторичный текст, контраст 5.2:1 к paper */
+  --color-sand: #e7e1d6; /* занятое время, волосяные линии */
+  --color-signal: #2b1ce0; /* акцент: выбранный слот, фокус */
+  --color-signal-soft: #eceafd; /* подложка выбранного */
+  --color-alert: #b3261e; /* только ошибки и отмены */
+
+  /* ---- Шрифты ----
+     Значения приходят из next/font в layout.tsx.
+     display — только заголовки, время и цены. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-unbounded), var(--font-inter), sans-serif;
+
+  /* ---- Шкала кеглей ----
+     Namespace переопределён целиком, а не расширен: вне шкалы
+     размера просто нет, поэтому случайный 16px не появится. */
+  --text-xs: 0.8125rem; /* 13 — подписи, вторичные метки */
+  --text-sm: 0.9375rem; /* 15 — интерфейсный текст */
+  --text-base: 1.0625rem; /* 17 — основной текст */
+  --text-lg: 1.375rem; /* 22 — подзаголовки */
+  --text-xl: 1.875rem; /* 30 — заголовки экранов */
+  --text-2xl: 2.75rem; /* 44 — крупная типографика */
+
+  /* ---- Радиус кодирует роль элемента ----
+     Единый радиус на всём — признак шаблона. Здесь он различает
+     типы объектов: блок времени острый (он про точность),
+     кнопка — таблетка, аватар — круг. */
+  --radius-slot: 4px;
+}
+
+/*
+  Масштаб ленты дня. Не токен Tailwind: это не утилита, а множитель,
+  на который умножается длительность в минутах при расчёте высоты.
+  1 минута = 1.2px, то есть час = 72px.
+*/
+:root {
+  --ribbon-px-per-min: 1.2;
+}
+
+@media (max-width: 640px) {
+  :root {
+    /* На телефоне день целиком не помещается — сжимаем,
+       пропорции между услугами при этом сохраняются. */
+    --ribbon-px-per-min: 0.9;
+  }
+}
+
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Отрицательный трекинг только на крупных кеглях: на мелком
+     тексте он вредит читаемости, а не помогает. */
+  :is(h1, h2, h3) {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  /* Фокус виден всегда и одинаково — это часть дизайна,
+     а не то, что убирают ради «чистоты». */
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-signal-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
