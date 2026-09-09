@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
 import { prisma } from "@/lib/prisma";
 
 export const auth = betterAuth({
@@ -29,4 +30,12 @@ export const auth = betterAuth({
       },
     },
   },
+
+  /**
+   * Обязательно последним в списке. Плагин перекладывает Set-Cookie,
+   * который вернул эндпоинт, в куки Next. Без него вход через
+   * Server Action «проходит» — и не оставляет сессии: куку просто
+   * некому поставить.
+   */
+  plugins: [nextCookies()],
 });
