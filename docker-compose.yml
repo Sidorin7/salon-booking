@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: salon-booking-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: salon
+      POSTGRES_PASSWORD: salon
+      POSTGRES_DB: salon
+    ports:
+      # 5433 снаружи, чтобы не столкнуться с локальным Postgres,
+      # если он когда-нибудь появится на машине.
+      - "5433:5432"
+    volumes:
+      - salon-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Без healthcheck миграции могут стартовать раньше, чем база
+      # действительно готова принимать соединения.
+      test: ["CMD-SHELL", "pg_isready -U salon -d salon"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  salon-db-data:
