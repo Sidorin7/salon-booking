@@ -17,6 +17,7 @@ import { headers } from "next/headers";
 import { APIError } from "better-auth/api";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { safeNext } from "@/lib/safe-next";
 
 const credentials = z.object({
   email: z.email(),
@@ -43,6 +44,7 @@ export async function signInAction(formData: FormData) {
   });
 
   const email = String(formData.get("email") ?? "");
+  const next = safeNext(formData.get("next"));
 
   if (!parsed.success) {
     redirect(backTo("/signin", "invalid", email));
@@ -64,7 +66,7 @@ export async function signInAction(formData: FormData) {
   // ответ подсказал бы, какие адреса в базе есть.
   if (failed) redirect(backTo("/signin", "invalid", email));
 
-  redirect("/");
+  redirect(next);
 }
 
 export async function signUpAction(formData: FormData) {

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signInAction } from "../actions";
+import { safeNext } from "@/lib/safe-next";
 
 /*
   Вход. Обычная HTML-форма с Server Action: без JavaScript тоже работает.
@@ -14,6 +15,8 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
   const params = await searchParams;
   const error = typeof params.error === "string" ? MESSAGES[params.error] : null;
   const email = typeof params.email === "string" ? params.email : "";
+  // Куда вернуться после входа: например, к выбранному слоту.
+  const next = safeNext(params.next);
 
   return (
     <main className="mx-auto max-w-sm px-4 py-16">
@@ -28,6 +31,7 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
       )}
 
       <form action={signInAction}>
+        <input type="hidden" name="next" value={next} />
         <label className="field">
           <span className="field-label">Почта</span>
           <input
