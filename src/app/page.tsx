@@ -2,18 +2,27 @@ import Link from "next/link";
 import { DayRibbon } from "@/components/day-ribbon";
 import { SALON_TIMEZONE } from "@/lib/salon";
 import { getDaySchedule } from "@/services/schedule";
+import { getActiveServices } from "@/services/catalog";
 import { salonDayKey, shiftDayKey } from "@/domain/scheduling/salon-time";
 
 /*
-  Экран дня. Пока только просмотр: бронирование — следующий этап.
+  Экран дня: лента занятости и, если выбрана услуга, свободные слоты.
 
-  Дата живёт в адресе (?date=YYYY-MM-DD), а не в состоянии компонента.
-  Поэтому переключение дней — обычные ссылки: работает без JavaScript,
-  ссылку на конкретный день можно отправить мастеру, а «назад» в браузере
-  ведёт туда, куда человек и ожидает.
+  Всё состояние — в адресе (?date=, ?service=). Поэтому переключение дней
+  и выбор услуги — обычные ссылки: работает без JavaScript, ссылкой можно
+  поделиться, «назад» в браузере ведёт туда, куда человек ожидает.
 */
 
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Отказы бронирования, объяснённые словами. */
+const BOOKING_ERRORS: Record<string, string> = {
+  slot_taken:
+    "Это время только что заняли — буквально пока вы выбирали. Выберите другое.",
+  not_available: "Это время уже недоступно. Обновите день и выберите другое.",
+  too_late: "Записаться так близко к началу нельзя. Выберите время попозже.",
+  not_offered: "Этот мастер не оказывает выбранную услугу.",
+};
 
 const dayTitle = (dayKey: string) =>
   new Intl.DateTimeFormat("ru-RU", {
@@ -26,16 +35,38 @@ const dayTitle = (dayKey: string) =>
 export default async function Home({ searchParams }: PageProps<"/">) {
   const now = new Date();
   const today = salonDayKey(now, SALON_TIMEZONE);
+  const params = await searchParams;
 
-  const requested = (await searchParams).date;
   // Мусор в адресной строке не должен ронять страницу — молча показываем
   // сегодня. Валидация ровно здесь: дальше по коду дата уже корректна.
+  const requested = params.date;
   const dayKey =
     typeof requested === "string" && DAY_KEY_PATTERN.test(requested)
       ? requested
       : today;
 
-  const schedule = await getDaySchedule(dayKey, now);
+  const serviceParam =
+    typeof params.service === "string" ? params.service : undefined;
+  const error =
+    typeof params.error === "string" ? BOOKING_ERRORS[params.error] : null;
+
+  const [services, schedule] = await Promise.all([
+    getActiveServices(),
+    getDaySchedule(dayKey, now, serviceParam),
+  ]);
+
+  // Несуществующая услуга в адресе — то же самое, что не выбранная.
+  const serviceId = services.some((service) => service.id === serviceParam)
+    ? serviceParam
+    : undefined;
+
+  const link = (next: { date?: string; service?: string | null }) => {
+    const query = new URLSearchParams({ date: next.date ?? dayKey });
+    const service = next.service === undefined ? serviceId : next.service;
+    if (service) query.set("service", service);
+
+    return `/?${query}`;
+  };
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
@@ -46,43 +77,67 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         </div>
 
         <nav aria-label="Выбор дня" className="flex items-center gap-2">
-          <DayLink dayKey={shiftDayKey(dayKey, -1)} label="Предыдущий день">
+          <Link
+            className="border-sand hover:border-ink rounded-full border px-3 py-1 text-sm"
+            href={link({ date: shiftDayKey(dayKey, -1) })}
+            aria-label="Предыдущий день"
+          >
             ←
-          </DayLink>
-          {dayKey !== today && <DayLink dayKey={today}>Сегодня</DayLink>}
-          <DayLink dayKey={shiftDayKey(dayKey, 1)} label="Следующий день">
+          </Link>
+          {dayKey !== today && (
+            <Link
+              className="border-sand hover:border-ink rounded-full border px-3 py-1 text-sm"
+              href={link({ date: today })}
+            >
+              Сегодня
+            </Link>
+          )}
+          <Link
+            className="border-sand hover:border-ink rounded-full border px-3 py-1 text-sm"
+            href={link({ date: shiftDayKey(dayKey, 1) })}
+            aria-label="Следующий день"
+          >
             →
-          </DayLink>
+          </Link>
         </nav>
       </header>
 
-      <DayRibbon schedule={schedule} />
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <nav aria-label="Выбор услуги" className="mb-8">
+        <ul className="flex flex-wrap gap-2">
+          {services.map((service) => {
+            const active = service.id === serviceId;
+
+            return (
+              <li key={service.id}>
+                <Link
+                  className={`chip ${active ? "chip--active" : ""}`}
+                  href={link({ service: active ? null : service.id })}
+                  aria-current={active ? "true" : undefined}
+                >
+                  {service.title}
+                  <span className="chip-meta">
+                    {service.durationMin} мин · {service.priceLabel}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <DayRibbon schedule={schedule} serviceId={serviceId} />
 
       <p className="text-muted mt-8 text-xs">
-        Штриховкой отмечено время, когда мастер недоступен. Записаться можно
-        будет на следующем этапе.
+        {serviceId
+          ? "Нажмите на свободное время, чтобы записаться. Штриховка — время, когда мастер недоступен."
+          : "Выберите услугу выше, чтобы увидеть свободное время. Штриховка — время, когда мастер недоступен."}
       </p>
     </main>
-  );
-}
-
-/** Кнопка-таблетка: радиус в проекте кодирует роль элемента. */
-function DayLink({
-  dayKey,
-  label,
-  children,
-}: {
-  dayKey: string;
-  label?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={`/?date=${dayKey}`}
-      aria-label={label}
-      className="border-sand hover:border-ink rounded-full border px-3 py-1 text-sm"
-    >
-      {children}
-    </Link>
   );
 }

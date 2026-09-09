@@ -35,14 +35,25 @@ function VisitRow({ visit }: { visit: ClientVisit }) {
   );
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: PageProps<"/account">) {
   const user = await requireUser();
+  const justBooked = (await searchParams).booked === "1";
   const { upcoming, past } = await getClientVisits(user.id, new Date());
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <p className="text-muted text-xs">{user.email}</p>
       <h1 className="mb-8 text-xl">Мои записи</h1>
+
+      {/* Подтверждение словами, а не зелёной галочкой: зелёного «успеха»
+          в палитре нет намеренно. */}
+      {justBooked && (
+        <p className="border-signal text-signal mb-8 border-l-2 pl-3 text-sm" role="status">
+          Записали. Ждём вас — до встречи в салоне.
+        </p>
+      )}
 
       <h2 className="mb-2 text-lg">Предстоящие</h2>
       {upcoming.length > 0 ? (

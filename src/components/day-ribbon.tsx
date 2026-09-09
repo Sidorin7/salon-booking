@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
-import type { DaySchedule, RibbonEntry } from "@/services/schedule";
+import { bookAction } from "@/app/booking-actions";
+import { SLOT_STEP_MIN } from "@/lib/salon";
+import type { DaySchedule, RibbonEntry, SlotOffer } from "@/services/schedule";
 
 /*
   Лента дня.
@@ -54,7 +56,49 @@ function Block({ entry }: { entry: RibbonEntry }) {
   );
 }
 
-export function DayRibbon({ schedule }: { schedule: DaySchedule }) {
+/**
+ * Слот — настоящая кнопка в списке, а не раскрашенный div.
+ * Визуально это лента, но для клавиатуры и скринридера — обычный
+ * перечень времени, по которому можно пройти без мыши.
+ */
+function Slot({
+  slot,
+  masterId,
+  serviceId,
+  dayKey,
+}: {
+  slot: SlotOffer;
+  masterId: string;
+  serviceId: string;
+  dayKey: string;
+}) {
+  return (
+    <li className="ribbon-scale" style={scale(slot.fromMin, SLOT_STEP_MIN)}>
+      <form action={bookAction}>
+        <input type="hidden" name="masterId" value={masterId} />
+        <input type="hidden" name="serviceId" value={serviceId} />
+        <input type="hidden" name="startsAt" value={slot.startsAt} />
+        <input type="hidden" name="dayKey" value={dayKey} />
+        <button
+          className="ribbon-scale ribbon-slot"
+          style={scale(slot.fromMin, SLOT_STEP_MIN)}
+          type="submit"
+        >
+          {slot.label}
+        </button>
+      </form>
+    </li>
+  );
+}
+
+export function DayRibbon({
+  schedule,
+  serviceId,
+}: {
+  schedule: DaySchedule;
+  /** Пока услуга не выбрана, лента только показывает день. */
+  serviceId?: string;
+}) {
   return (
     <div className="flex gap-4 overflow-x-auto pb-4">
       {/* Часовая линейка. aria-hidden: цифры «10, 11, 12» без контекста
@@ -80,6 +124,9 @@ export function DayRibbon({ schedule }: { schedule: DaySchedule }) {
           <h2 className="text-lg">{column.displayName}</h2>
           <p className="text-muted mb-3 text-xs">
             {column.shiftLabel ?? "Выходной"}
+            {serviceId && column.shift && column.slots.length === 0 && (
+              <> · всё занято</>
+            )}
           </p>
 
           <div
@@ -113,6 +160,23 @@ export function DayRibbon({ schedule }: { schedule: DaySchedule }) {
               <ul className="absolute inset-x-0 top-0 bottom-0">
                 {column.entries.map((entry) => (
                   <Block key={entry.id} entry={entry} />
+                ))}
+              </ul>
+            )}
+
+            {serviceId && column.slots.length > 0 && (
+              <ul
+                className="absolute inset-x-0 top-0 bottom-0"
+                aria-label={`Свободное время: ${column.displayName}`}
+              >
+                {column.slots.map((slot) => (
+                  <Slot
+                    key={slot.startsAt}
+                    slot={slot}
+                    masterId={column.masterId}
+                    serviceId={serviceId}
+                    dayKey={schedule.dayKey}
+                  />
                 ))}
               </ul>
             )}

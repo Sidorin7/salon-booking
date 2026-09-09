@@ -285,3 +285,64 @@
     color: var(--color-alert);
   }
 }
+
+/*
+  Слоты бронирования в ленте.
+
+  Высота слота — шаг сетки, а не длительность услуги: слоты идут каждые
+  30 минут и при длительности в час перекрывали бы друг друга. Сколько
+  времени займёт услуга, лента показывает блоками уже занятого времени.
+*/
+@layer components {
+  .ribbon-slot {
+    position: absolute;
+    inset-inline: 0;
+    top: var(--ribbon-offset);
+    height: var(--ribbon-length);
+    display: flex;
+    align-items: center;
+    padding-inline: 0.5rem;
+    font-family: var(--font-display);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-ink);
+    text-align: start;
+    border-radius: var(--radius-slot);
+    box-shadow: inset 0 0 0 1px var(--color-sand);
+  }
+
+  .ribbon-slot:hover {
+    background-color: var(--color-signal-soft);
+    box-shadow: inset 0 0 0 1px var(--color-signal);
+  }
+
+  /* Выбор услуги: таблетки-ссылки над лентой. */
+  .chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.375rem 0.875rem;
+    font-size: var(--text-sm);
+    border-radius: 9999px;
+    box-shadow: inset 0 0 0 1px var(--color-sand);
+  }
+
+  .chip:hover {
+    box-shadow: inset 0 0 0 1px var(--color-ink);
+  }
+
+  .chip--active {
+    color: var(--color-paper);
+    background-color: var(--color-ink);
+    box-shadow: none;
+  }
+
+  .chip-meta {
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+  }
+
+  .chip--active .chip-meta {
+    color: var(--color-sand);
+  }
+}

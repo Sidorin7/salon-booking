@@ -15,6 +15,7 @@ import {
   weekdayOfDayKey,
   type DayKey,
 } from "@/domain/scheduling/salon-time";
+import { getAvailableSlots } from "@/services/availability";
 
 const MINUTE_MS = 60_000;
 
@@ -34,6 +35,15 @@ export type RibbonEntry = {
   isCancelled: boolean;
 };
 
+/** Предложение начать услугу в это время — кнопка в ленте. */
+export type SlotOffer = {
+  /** Минуты от начала ленты. */
+  fromMin: number;
+  /** ISO-строка: уедет в форму и вернётся в Server Action. */
+  startsAt: string;
+  label: string;
+};
+
 export type RibbonColumn = {
   masterId: string;
   displayName: string;
@@ -41,6 +51,8 @@ export type RibbonColumn = {
   shift: { fromMin: number; durationMin: number } | null;
   shiftLabel: string | null;
   entries: RibbonEntry[];
+  /** Пусто, пока услуга не выбрана: без неё нет и длительности. */
+  slots: SlotOffer[];
 };
 
 export type DaySchedule = {
@@ -66,6 +78,8 @@ const FALLBACK_CLOSE_MIN = 20 * 60;
 export async function getDaySchedule(
   dayKey: DayKey,
   now: Date,
+  /** Выбранная услуга: только с ней в ленте появляются слоты. */
+  serviceId?: string,
 ): Promise<DaySchedule> {
   const weekday = weekdayOfDayKey(dayKey);
 
@@ -153,6 +167,47 @@ export async function getDaySchedule(
     };
   };
 
+  // Слоты считаются, только когда выбрана услуга: длительность берётся
+  // от неё, а без длительности вопрос «что предложить» не имеет смысла.
+  const service = serviceId
+    ? await prisma.service.findFirst({
+        where: { id: serviceId, isActive: true },
+        select: { id: true, durationMin: true },
+      })
+    : null;
+
+  const slotsByMaster = new Map<string, SlotOffer[]>();
+
+  if (service) {
+    const offering = await prisma.masterService.findMany({
+      where: { serviceId: service.id },
+      select: { masterId: true },
+    });
+    const offeringIds = new Set(offering.map((row) => row.masterId));
+
+    await Promise.all(
+      masters
+        .filter((master) => offeringIds.has(master.id))
+        .map(async (master) => {
+          const slots = await getAvailableSlots({
+            masterId: master.id,
+            dayKey,
+            durationMin: service.durationMin,
+            now,
+          });
+
+          slotsByMaster.set(
+            master.id,
+            slots.map((startsAt) => ({
+              fromMin: toRibbonMin(startsAt),
+              startsAt: startsAt.toISOString(),
+              label: formatSalonTime(startsAt, SALON_TIMEZONE),
+            })),
+          );
+        }),
+    );
+  }
+
   const columns: RibbonColumn[] = masters.map((master) => {
     const hours = master.workingHours;
     const shiftStart = hours.length ? hours[0].startMin : null;
@@ -189,6 +244,7 @@ export async function getDaySchedule(
           ? null
           : `${formatMinutes(shiftStart)}–${formatMinutes(shiftEnd)}`,
       entries,
+      slots: slotsByMaster.get(master.id) ?? [],
     };
   });
 
