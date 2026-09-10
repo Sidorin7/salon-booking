@@ -346,3 +346,66 @@
     color: var(--color-sand);
   }
 }
+
+/*
+  ─── Аналитика ─────────────────────────────────────────────────────────
+
+  График рисует Recharts, но цвета берёт отсюда: в компонент уезжают
+  строки `var(--color-…)`, а не значения. Иначе палитра библиотеки
+  разъехалась бы с палитрой проекта при первой же правке токена.
+*/
+@layer components {
+  /* Подсказка над столбцом. Своя, а не дефолтная: у Recharts она
+     с рамкой и тенью — та самая карточка, от которой мы отказались. */
+  .chart-tooltip {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.375rem 0.625rem;
+    color: var(--color-paper);
+    background-color: var(--color-ink);
+    border-radius: var(--radius-slot);
+  }
+
+  /* Показатель крупным числом. Единственное место, где в проекте
+     появляется --text-2xl: у сводки должна быть одна главная цифра. */
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .stat-label {
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .stat--lead .stat-value {
+    font-size: var(--text-2xl);
+  }
+
+  /*
+    Шкала загрузки. Доля показывается полоской, а не столбиком графика:
+    у неё есть естественный потолок в 100%, и полоска этот потолок
+    показывает собой — пустой остаток и есть непроданное время.
+  */
+  .meter {
+    height: 4px;
+    border-radius: 9999px;
+    background-color: var(--color-sand);
+  }
+
+  .meter-fill {
+    height: 100%;
+    width: calc(var(--share) * 100%);
+    border-radius: 9999px;
+    background-color: var(--color-signal);
+  }
+}

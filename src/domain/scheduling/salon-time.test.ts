@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  eachDayKey,
   formatSalonTime,
   parseWallClock,
   salonDayKey,
@@ -61,5 +62,31 @@ describe("parseWallClock", () => {
     expect(parseWallClock("10:60")).toBeNull();
     expect(parseWallClock("9:30")).toBeNull();
     expect(parseWallClock("")).toBeNull();
+  });
+});
+
+describe("eachDayKey", () => {
+  it("перечисляет дни периода включительно с обоих концов", () => {
+    expect(eachDayKey("2026-09-09", "2026-09-12")).toEqual([
+      "2026-09-09",
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-12",
+    ]);
+  });
+
+  it("период из одного дня — один день", () => {
+    expect(eachDayKey("2026-09-09", "2026-09-09")).toEqual(["2026-09-09"]);
+  });
+
+  it("перевёрнутый период пуст, а не бесконечен", () => {
+    expect(eachDayKey("2026-09-12", "2026-09-09")).toEqual([]);
+  });
+
+  it("переходит через границу месяца", () => {
+    expect(eachDayKey("2026-08-31", "2026-09-01")).toEqual([
+      "2026-08-31",
+      "2026-09-01",
+    ]);
   });
 });

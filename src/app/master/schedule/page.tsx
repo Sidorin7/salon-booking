@@ -94,7 +94,11 @@ export default async function SchedulePage({
         <Link className="underline" href="/master">
           странице дня
         </Link>
-        : они разовые, а график повторяется каждую неделю.
+        : они разовые, а график повторяется каждую неделю. Там же —{" "}
+        <Link className="underline" href="/master/stats">
+          аналитика
+        </Link>
+        .
       </p>
     </main>
   );

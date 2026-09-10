@@ -128,3 +128,19 @@ export function parseWallClock(value: string): number | null {
 
   return hours * 60 + minutes;
 }
+
+/**
+ * Дни периода, включая оба конца. Перевёрнутый период пуст.
+ *
+ * Арифметика по UTC, как и в `shiftDayKey`: перевод часов не должен
+ * ни удваивать день, ни терять его.
+ */
+export function eachDayKey(from: DayKey, to: DayKey): DayKey[] {
+  const days: DayKey[] = [];
+
+  for (let day = from; day <= to; day = shiftDayKey(day, 1)) {
+    days.push(day);
+  }
+
+  return days;
+}

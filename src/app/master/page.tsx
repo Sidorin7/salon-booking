@@ -231,11 +231,13 @@ export default async function MasterPage({
       </form>
 
       <p className="text-muted mt-8 text-xs">
-        Недельный график — на{" "}
         <Link className="underline" href="/master/schedule">
-          отдельной странице
+          Недельный график
+        </Link>{" "}
+        ·{" "}
+        <Link className="underline" href="/master/stats">
+          Аналитика
         </Link>
-        .
       </p>
     </main>
   );
