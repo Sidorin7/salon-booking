@@ -107,3 +107,24 @@ export function shiftDayKey(dayKey: DayKey, days: number): DayKey {
     shifted.getUTCDate(),
   );
 }
+
+/**
+ * «ЧЧ:ММ» с настенных часов → минуты от полуночи. `null`, если это не время.
+ *
+ * `<input type="time">` присылает именно такую строку, но полагаться
+ * на браузер нельзя: форму можно отправить и мимо него. Возврат `null`
+ * вместо исключения — потому что для сервера это ожидаемый ввод,
+ * а не поломка.
+ */
+export function parseWallClock(value: string): number | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+
+  if (hours > 23 || minutes > 59) return null;
+
+  return hours * 60 + minutes;
+}

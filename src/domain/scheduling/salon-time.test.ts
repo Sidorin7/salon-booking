@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatSalonTime,
+  parseWallClock,
   salonDayKey,
   salonWallClockToUtc,
   weekdayOfDayKey,
@@ -46,5 +47,19 @@ describe("weekdayOfDayKey", () => {
   it("считает день недели так же, как Date.getDay(): 0 — воскресенье", () => {
     expect(weekdayOfDayKey("2026-09-09")).toBe(3); // среда
     expect(weekdayOfDayKey("2026-09-13")).toBe(0); // воскресенье
+  });
+});
+
+describe("parseWallClock", () => {
+  it("переводит «ЧЧ:ММ» в минуты от полуночи", () => {
+    expect(parseWallClock("10:30")).toBe(630);
+    expect(parseWallClock("00:00")).toBe(0);
+  });
+
+  it("отвергает всё, что не время: поле формы может прийти любым", () => {
+    expect(parseWallClock("24:00")).toBeNull();
+    expect(parseWallClock("10:60")).toBeNull();
+    expect(parseWallClock("9:30")).toBeNull();
+    expect(parseWallClock("")).toBeNull();
   });
 });

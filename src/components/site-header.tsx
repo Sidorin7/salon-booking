@@ -29,6 +29,13 @@ export async function SiteHeader() {
 
         {user ? (
           <div className="flex items-center gap-4">
+            {/* Кабинет — только мастеру: у клиента такой страницы нет,
+                и ссылка на неё вела бы в редирект. */}
+            {user.role === "MASTER" && (
+              <Link href="/master" className="text-sm">
+                Кабинет
+              </Link>
+            )}
             <Link href="/account" className="text-sm">
               {user.name}
               {roleLabel && (
