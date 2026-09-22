@@ -30,6 +30,10 @@ export default async function AdminServicesPage({
         админка ·{" "}
         <Link className="underline" href="/admin/masters">
           мастера
+        </Link>{" "}
+        ·{" "}
+        <Link className="underline" href="/admin/stats">
+          аналитика
         </Link>
       </p>
       <div className="mb-8 flex items-center justify-between">
