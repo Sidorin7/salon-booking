@@ -26,7 +26,12 @@ export default async function AdminServicesPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-      <p className="text-muted text-xs">админка</p>
+      <p className="text-muted text-xs">
+        админка ·{" "}
+        <Link className="underline" href="/admin/masters">
+          мастера
+        </Link>
+      </p>
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-xl">Услуги</h1>
         <Link className="button" href="/admin/services/new">

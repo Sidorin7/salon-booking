@@ -23,6 +23,12 @@ model User {
   /// CLIENT | MASTER | ADMIN. Тип String — таким его создаёт Better Auth.
   /// Целостность значений обеспечена CHECK-констрейнтом в миграции.
   role          String?   @default("CLIENT")
+  /// Три поля ниже требует плагин admin (auth.api.createUser — им заводит
+  /// мастеров админка, без автовхода и без куки новой сессии). Баном
+  /// пользователей в проекте не пользуемся, но без полей плагин не встаёт.
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime?
   sessions      Session[]
   accounts      Account[]
 
@@ -44,6 +50,9 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Тоже требует плагин admin (сессии выданные через impersonateUser).
+  /// Функцией не пользуемся, но без поля не встаёт схема.
+  impersonatedBy String?
 
   @@unique([token])
   @@index([userId])
