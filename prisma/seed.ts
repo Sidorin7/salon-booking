@@ -134,6 +134,8 @@ const clients = [
   { name: "Камила Юсупова", email: `kamila@${TEST_EMAIL_DOMAIN}` },
 ];
 
+const admin = { name: "Администратор", email: `admin@${TEST_EMAIL_DOMAIN}` };
+
 /**
  * Что и кому записать. День задаётся сдвигом от сегодня, а не датой:
  * иначе через неделю сид создавал бы записи в прошлом.
@@ -248,11 +250,12 @@ async function main() {
     masterByKey.set(master.key, created);
   }
 
-  // 3. Клиенты
+  // 3. Клиенты и администратор
   const clientRecords = [];
   for (const client of clients) {
     clientRecords.push(await createUser(client.name, client.email, "CLIENT"));
   }
+  await createUser(admin.name, admin.email, "ADMIN");
 
   // 4. Обед у Анны сегодня. Заодно проверим, что расчёт слотов его видит:
   //    записи ниже обязаны его обойти.
@@ -352,7 +355,7 @@ async function main() {
 
   console.log(
     `Готово: ${services.length} услуг, ${masters.length} мастера, ` +
-      `${clients.length} клиента, ${created} записей.`,
+      `${clients.length} клиента, 1 администратор, ${created} записей.`,
   );
   console.log(`Вход в любую учётку: <имя>@${TEST_EMAIL_DOMAIN} / ${TEST_PASSWORD}`); // prettier-ignore
 }

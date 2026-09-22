@@ -36,6 +36,11 @@ export async function SiteHeader() {
                 Кабинет
               </Link>
             )}
+            {user.role === "ADMIN" && (
+              <Link href="/admin/services" className="text-sm">
+                Админка
+              </Link>
+            )}
             <Link href="/account" className="text-sm">
               {user.name}
               {roleLabel && (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatKopecks } from "./money";
+import { formatKopecks, parseRublesToKopecks } from "./money";
 
 /*
   Пробелы в ожиданиях — неразрывные (U+00A0), и записаны escape-
@@ -25,5 +25,43 @@ describe("formatKopecks", () => {
 
   it("умеет ноль", () => {
     expect(formatKopecks(0)).toBe(`0${NBSP}₽`);
+  });
+});
+
+describe("parseRublesToKopecks", () => {
+  it("разбирает целое число рублей", () => {
+    expect(parseRublesToKopecks("1500")).toBe(150_000);
+  });
+
+  it("разбирает рубли с копейками через точку", () => {
+    expect(parseRublesToKopecks("1500.50")).toBe(150_050);
+  });
+
+  it("разбирает рубли с копейками через запятую", () => {
+    // Форма — русская, и в цене человек скорее наберёт запятую.
+    expect(parseRublesToKopecks("1500,5")).toBe(150_050);
+  });
+
+  it("прощает пробелы по краям", () => {
+    expect(parseRublesToKopecks("  350  ")).toBe(35_000);
+  });
+
+  it("отвергает мусор", () => {
+    expect(parseRublesToKopecks("бесплатно")).toBeNull();
+  });
+
+  it("отвергает пустую строку", () => {
+    expect(parseRublesToKopecks("")).toBeNull();
+  });
+
+  it("отвергает ноль и отрицательные суммы", () => {
+    // Цена — обязательная часть услуги, ноль и минус не имеют смысла.
+    expect(parseRublesToKopecks("0")).toBeNull();
+    expect(parseRublesToKopecks("-100")).toBeNull();
+  });
+
+  it("отвергает больше двух знаков после запятой", () => {
+    // Копейка — минимальная единица; «15,505» ничему не соответствует.
+    expect(parseRublesToKopecks("15.505")).toBeNull();
   });
 });

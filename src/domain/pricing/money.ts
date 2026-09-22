@@ -17,3 +17,27 @@ export function formatKopecks(kopecks: number): string {
   // «3 500» и «₽» не должны разъезжаться по разным строкам.
   return formatter.format(kopecks / 100);
 }
+
+const RUBLES_PATTERN = /^\d+([.,]\d{1,2})?$/;
+
+/**
+ * Обратное к `formatKopecks`: строка из формы админки → копейки.
+ * Возвращает `null` на всём, что не «положительное число рублей
+ * с не более чем двумя знаками после запятой» — включая ноль,
+ * отрицательные суммы и мусор.
+ */
+export function parseRublesToKopecks(input: string): number | null {
+  const trimmed = input.trim().replace(",", ".");
+
+  if (!RUBLES_PATTERN.test(trimmed)) {
+    return null;
+  }
+
+  const rubles = Number(trimmed);
+
+  if (rubles <= 0) {
+    return null;
+  }
+
+  return Math.round(rubles * 100);
+}
