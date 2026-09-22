@@ -55,6 +55,13 @@ export type RibbonColumn = {
   slots: SlotOffer[];
 };
 
+/**
+ * Мастер, который оказывает выбранную услугу, но свободного времени
+ * сегодня у него нет — выходной или всё расписано. Не пропадает из
+ * вида совсем: иначе клиент не отличит «занят сегодня» от «уволился».
+ */
+export type BusyMaster = { masterId: string; displayName: string };
+
 export type DaySchedule = {
   dayKey: DayKey;
   /** Минуты от полуночи, с которых начинается лента. */
@@ -66,6 +73,9 @@ export type DaySchedule = {
   /** Позиция отметки «сейчас», если этот момент попадает в ленту. */
   nowMin: number | null;
   columns: RibbonColumn[];
+  /** Заполняется только когда выбрана услуга — без неё делить мастеров
+      на «свободен»/«занят» нечем. */
+  busyMasters: BusyMaster[];
 };
 
 /**
@@ -83,8 +93,22 @@ export async function getDaySchedule(
 ): Promise<DaySchedule> {
   const weekday = weekdayOfDayKey(dayKey);
 
+  // Услуга нужна раньше запроса мастеров: если она выбрана, в ленте
+  // вообще не должно быть тех, кто её не оказывает — не пустая колонка
+  // без слотов, а полное отсутствие. Мастер маникюра не имеет отношения
+  // к записи на окрашивание.
+  const service = serviceId
+    ? await prisma.service.findFirst({
+        where: { id: serviceId, isActive: true },
+        select: { id: true, durationMin: true },
+      })
+    : null;
+
   const masters = await prisma.master.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      ...(service ? { services: { some: { serviceId: service.id } } } : {}),
+    },
     orderBy: { displayName: "asc" },
     select: {
       id: true,
@@ -97,10 +121,46 @@ export async function getDaySchedule(
     },
   });
 
-  // Границы ленты: от самой ранней смены до самой поздней. Общая шкала
-  // на всех мастеров — иначе колонки нельзя сравнивать взглядом,
-  // а это главное, ради чего лента и рисуется.
-  const shifts = masters.flatMap((master) => master.workingHours);
+  // Слоты — только когда выбрана услуга: без длительности вопрос
+  // «что предложить» не имеет смысла.
+  const slotsByMaster = new Map<string, Date[]>();
+
+  if (service) {
+    await Promise.all(
+      masters.map(async (master) => {
+        const slots = await getAvailableSlots({
+          masterId: master.id,
+          dayKey,
+          durationMin: service.durationMin,
+          now,
+        });
+
+        slotsByMaster.set(master.id, slots);
+      }),
+    );
+  }
+
+  // Мастер, который умеет услугу, но сегодня либо выходной, либо всё
+  // расписано, — не колонка, а плашка: «занят», а не «пропал».
+  const busyMasters: BusyMaster[] = service
+    ? masters
+        .filter((master) => (slotsByMaster.get(master.id) ?? []).length === 0)
+        .map((master) => ({
+          masterId: master.id,
+          displayName: master.displayName,
+        }))
+    : [];
+
+  const shownMasters = service
+    ? masters.filter(
+        (master) => (slotsByMaster.get(master.id) ?? []).length > 0,
+      )
+    : masters;
+
+  // Границы ленты — от смен только тех мастеров, что реально в ней
+  // покажутся. Иначе занятый вне вида мастер всё равно растягивал бы
+  // общую шкалу под свою смену.
+  const shifts = shownMasters.flatMap((master) => master.workingHours);
   const opensAtMin = shifts.length
     ? Math.min(...shifts.map((hours) => hours.startMin))
     : FALLBACK_OPEN_MIN;
@@ -114,10 +174,11 @@ export async function getDaySchedule(
   // Пересечение с окном дня, а не равенство дате: запись, начавшаяся
   // вчера вечером и закончившаяся сегодня, тоже занимает время.
   const overlapsDay = { startsAt: { lt: dayEnd }, endsAt: { gt: dayStart } };
+  const shownIds = shownMasters.map((master) => master.id);
 
   const [appointments, timeOff] = await Promise.all([
     prisma.appointment.findMany({
-      where: overlapsDay,
+      where: { ...overlapsDay, masterId: { in: shownIds } },
       orderBy: { startsAt: "asc" },
       select: {
         id: true,
@@ -129,7 +190,7 @@ export async function getDaySchedule(
       },
     }),
     prisma.timeOff.findMany({
-      where: overlapsDay,
+      where: { ...overlapsDay, masterId: { in: shownIds } },
       orderBy: { startsAt: "asc" },
       select: {
         id: true,
@@ -167,48 +228,7 @@ export async function getDaySchedule(
     };
   };
 
-  // Слоты считаются, только когда выбрана услуга: длительность берётся
-  // от неё, а без длительности вопрос «что предложить» не имеет смысла.
-  const service = serviceId
-    ? await prisma.service.findFirst({
-        where: { id: serviceId, isActive: true },
-        select: { id: true, durationMin: true },
-      })
-    : null;
-
-  const slotsByMaster = new Map<string, SlotOffer[]>();
-
-  if (service) {
-    const offering = await prisma.masterService.findMany({
-      where: { serviceId: service.id },
-      select: { masterId: true },
-    });
-    const offeringIds = new Set(offering.map((row) => row.masterId));
-
-    await Promise.all(
-      masters
-        .filter((master) => offeringIds.has(master.id))
-        .map(async (master) => {
-          const slots = await getAvailableSlots({
-            masterId: master.id,
-            dayKey,
-            durationMin: service.durationMin,
-            now,
-          });
-
-          slotsByMaster.set(
-            master.id,
-            slots.map((startsAt) => ({
-              fromMin: toRibbonMin(startsAt),
-              startsAt: startsAt.toISOString(),
-              label: formatSalonTime(startsAt, SALON_TIMEZONE),
-            })),
-          );
-        }),
-    );
-  }
-
-  const columns: RibbonColumn[] = masters.map((master) => {
+  const columns: RibbonColumn[] = shownMasters.map((master) => {
     const hours = master.workingHours;
     const shiftStart = hours.length ? hours[0].startMin : null;
     const shiftEnd = hours.length ? hours[hours.length - 1].endMin : null;
@@ -244,7 +264,11 @@ export async function getDaySchedule(
           ? null
           : `${formatMinutes(shiftStart)}–${formatMinutes(shiftEnd)}`,
       entries,
-      slots: slotsByMaster.get(master.id) ?? [],
+      slots: (slotsByMaster.get(master.id) ?? []).map((startsAt) => ({
+        fromMin: toRibbonMin(startsAt),
+        startsAt: startsAt.toISOString(),
+        label: formatSalonTime(startsAt, SALON_TIMEZONE),
+      })),
     };
   });
 
@@ -270,5 +294,6 @@ export async function getDaySchedule(
     hourMarks,
     nowMin: nowMin >= 0 && nowMin <= closesAtMin - opensAtMin ? nowMin : null,
     columns,
+    busyMasters,
   };
 }

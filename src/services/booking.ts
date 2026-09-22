@@ -13,7 +13,8 @@
 import { prisma } from "@/lib/prisma";
 import { classifyWriteError } from "@/lib/db-errors";
 import { MIN_LEAD_TIME_MIN, SALON_TIMEZONE } from "@/lib/salon";
-import { salonDayKey } from "@/domain/scheduling/salon-time";
+import { formatSalonTime, salonDayKey } from "@/domain/scheduling/salon-time";
+import { formatKopecks } from "@/domain/pricing/money";
 import { getAvailableSlots } from "@/services/availability";
 
 const MINUTE_MS = 60_000;
@@ -142,4 +143,80 @@ export async function bookAppointment(input: {
 
   // Недостижимо: цикл либо возвращает результат, либо бросает исключение.
   return { ok: false, reason: "SLOT_TAKEN" };
+}
+
+export type BookingPreview = {
+  masterName: string;
+  serviceTitle: string;
+  priceLabel: string;
+  durationMin: number;
+  timeLabel: string;
+  /** `false`, если время между кликом по слоту и открытием экрана
+      подтверждения кто-то успел занять — тогда формы подтверждения
+      не показываем вовсе, только объяснение и ссылку назад. */
+  available: boolean;
+};
+
+/**
+ * Данные для экрана подтверждения: «записаться к Анне на 14:00?».
+ *
+ * Источник правды по-прежнему bookAppointment — эта функция ничего
+ * не бронирует и не гарантирует, что слот доживёт до нажатия
+ * «Подтвердить». Она лишь честно показывает состояние на момент
+ * открытия страницы, пересчитывая слоты той же функцией, что и лента.
+ */
+export async function getBookingPreview(input: {
+  masterId: string;
+  serviceId: string;
+  startsAt: Date;
+  now: Date;
+}): Promise<BookingPreview | null> {
+  const link = await prisma.masterService.findUnique({
+    where: {
+      masterId_serviceId: {
+        masterId: input.masterId,
+        serviceId: input.serviceId,
+      },
+    },
+    select: {
+      master: { select: { displayName: true, isActive: true } },
+      service: {
+        select: {
+          title: true,
+          durationMin: true,
+          priceKopecks: true,
+          isActive: true,
+        },
+      },
+    },
+  });
+
+  if (!link || !link.master.isActive || !link.service.isActive) return null;
+
+  const { service } = link;
+  const dayKey = salonDayKey(input.startsAt, SALON_TIMEZONE);
+
+  const slots = await getAvailableSlots({
+    masterId: input.masterId,
+    dayKey,
+    durationMin: service.durationMin,
+    now: input.now,
+  });
+
+  const available = slots.some(
+    (slot) => slot.getTime() === input.startsAt.getTime(),
+  );
+
+  const endsAt = new Date(
+    input.startsAt.getTime() + service.durationMin * MINUTE_MS,
+  );
+
+  return {
+    masterName: link.master.displayName,
+    serviceTitle: service.title,
+    priceLabel: formatKopecks(service.priceKopecks),
+    durationMin: service.durationMin,
+    timeLabel: `${formatSalonTime(input.startsAt, SALON_TIMEZONE)}–${formatSalonTime(endsAt, SALON_TIMEZONE)}`,
+    available,
+  };
 }

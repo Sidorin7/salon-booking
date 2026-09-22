@@ -345,6 +345,17 @@
   .chip--active .chip-meta {
     color: var(--color-sand);
   }
+
+  /* Занятый сегодня мастер: не ссылка, действия за ней нет — обводка
+     тише, и наведение мышью ничего не меняет, в отличие от .chip. */
+  .chip--busy {
+    color: var(--color-muted);
+    cursor: default;
+  }
+
+  .chip--busy:hover {
+    box-shadow: inset 0 0 0 1px var(--color-sand);
+  }
 }
 
 /*

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { bookAction } from "@/app/booking-actions";
+import Link from "next/link";
 import { SLOT_STEP_MIN } from "@/lib/salon";
 import type { DaySchedule, RibbonEntry, SlotOffer } from "@/services/schedule";
 
@@ -57,9 +57,13 @@ function Block({ entry }: { entry: RibbonEntry }) {
 }
 
 /**
- * Слот — настоящая кнопка в списке, а не раскрашенный div.
+ * Слот — настоящая ссылка в списке, а не раскрашенный div.
  * Визуально это лента, но для клавиатуры и скринридера — обычный
  * перечень времени, по которому можно пройти без мыши.
+ *
+ * Ведёт на экран подтверждения, а не бронирует сразу по клику:
+ * человек должен увидеть «к кому и на сколько», прежде чем время
+ * займётся. Сама бронь — на следующем экране, действием bookAction.
  */
 function Slot({
   slot,
@@ -72,21 +76,22 @@ function Slot({
   serviceId: string;
   dayKey: string;
 }) {
+  const confirmUrl = `/booking/confirm?${new URLSearchParams({
+    masterId,
+    serviceId,
+    startsAt: slot.startsAt,
+    dayKey,
+  })}`;
+
   return (
     <li className="ribbon-scale" style={scale(slot.fromMin, SLOT_STEP_MIN)}>
-      <form action={bookAction}>
-        <input type="hidden" name="masterId" value={masterId} />
-        <input type="hidden" name="serviceId" value={serviceId} />
-        <input type="hidden" name="startsAt" value={slot.startsAt} />
-        <input type="hidden" name="dayKey" value={dayKey} />
-        <button
-          className="ribbon-scale ribbon-slot"
-          style={scale(slot.fromMin, SLOT_STEP_MIN)}
-          type="submit"
-        >
-          {slot.label}
-        </button>
-      </form>
+      <Link
+        className="ribbon-scale ribbon-slot"
+        style={scale(slot.fromMin, SLOT_STEP_MIN)}
+        href={confirmUrl}
+      >
+        {slot.label}
+      </Link>
     </li>
   );
 }
@@ -100,7 +105,25 @@ export function DayRibbon({
   serviceId?: string;
 }) {
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <>
+      {/* Мастера, которые эту услугу оказывают, но свободного времени
+          сегодня у них нет — не пропадают из вида совсем (иначе не
+          отличить «занят сегодня» от «уволился»), но и не тянут за
+          собой пустую ленту: просто список имён. */}
+      {serviceId && schedule.busyMasters.length > 0 && (
+        <ul className="mb-4 flex flex-wrap gap-2" aria-label="Заняты сегодня">
+          {schedule.busyMasters.map((master) => (
+            <li key={master.masterId}>
+              <span className="chip chip--busy">
+                {master.displayName}
+                <span className="chip-meta">занят сегодня</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex gap-4 overflow-x-auto pb-4">
       {/* Часовая линейка. aria-hidden: цифры «10, 11, 12» без контекста
           только засоряют озвучку — время каждого блока и так названо. */}
       <div
@@ -124,9 +147,6 @@ export function DayRibbon({
           <h2 className="text-lg">{column.displayName}</h2>
           <p className="text-muted mb-3 text-xs">
             {column.shiftLabel ?? "Выходной"}
-            {serviceId && column.shift && column.slots.length === 0 && (
-              <> · всё занято</>
-            )}
           </p>
 
           <div
@@ -183,6 +203,7 @@ export function DayRibbon({
           </div>
         </section>
       ))}
-    </div>
+      </div>
+    </>
   );
 }

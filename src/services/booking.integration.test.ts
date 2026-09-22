@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
-import { bookAppointment } from "./booking";
+import { bookAppointment, getBookingPreview } from "./booking";
 import { at, makeMaster, makeService, makeUser } from "../../tests/db/fixtures";
 
 /*
@@ -238,5 +238,60 @@ describe("bookAppointment", () => {
 
     expect(result).toEqual({ ok: false, reason: "SLOT_TAKEN" });
     expect(await prisma.appointment.count()).toBe(1);
+  });
+});
+
+describe("getBookingPreview", () => {
+  it("отдаёт данные для экрана подтверждения, когда время свободно", async () => {
+    const { service, master } = await setupSalon();
+
+    const preview = await getBookingPreview({
+      masterId: master.id,
+      serviceId: service.id,
+      startsAt: at(WEDNESDAY, 12),
+      now: MORNING,
+    });
+
+    expect(preview).toMatchObject({
+      masterName: master.displayName,
+      serviceTitle: service.title,
+      available: true,
+    });
+  });
+
+  it("сообщает, что время больше недоступно, если его уже заняли", async () => {
+    const { service, master } = await setupSalon();
+    const other = await makeUser("CLIENT");
+
+    await bookAppointment({
+      clientId: other.id,
+      masterId: master.id,
+      serviceId: service.id,
+      startsAt: at(WEDNESDAY, 12),
+      now: MORNING,
+    });
+
+    const preview = await getBookingPreview({
+      masterId: master.id,
+      serviceId: service.id,
+      startsAt: at(WEDNESDAY, 12),
+      now: MORNING,
+    });
+
+    expect(preview?.available).toBe(false);
+  });
+
+  it("отдаёт null, если мастер не оказывает эту услугу", async () => {
+    const { master } = await setupSalon();
+    const foreign = await makeService(30);
+
+    const preview = await getBookingPreview({
+      masterId: master.id,
+      serviceId: foreign.id,
+      startsAt: at(WEDNESDAY, 12),
+      now: MORNING,
+    });
+
+    expect(preview).toBeNull();
   });
 });

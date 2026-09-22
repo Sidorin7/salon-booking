@@ -28,8 +28,18 @@ function VisitRow({ visit }: { visit: ClientVisit }) {
         {visit.serviceTitle}
       </span>
       <span className="text-muted text-sm">{visit.masterName}</span>
-      <span className="font-display ml-auto text-sm tabular-nums">
-        {visit.priceLabel}
+      <span className="ml-auto flex items-center gap-3">
+        <span className="font-display text-sm tabular-nums">
+          {visit.priceLabel}
+        </span>
+        {visit.canCancel && (
+          <Link
+            className="button button--quiet"
+            href={`/account/cancel?appointmentId=${visit.id}`}
+          >
+            Отменить
+          </Link>
+        )}
       </span>
     </li>
   );
@@ -39,7 +49,9 @@ export default async function AccountPage({
   searchParams,
 }: PageProps<"/account">) {
   const user = await requireUser();
-  const justBooked = (await searchParams).booked === "1";
+  const query = await searchParams;
+  const justBooked = query.booked === "1";
+  const justCancelled = query.cancelled === "1";
   const { upcoming, past } = await getClientVisits(user.id, new Date());
 
   return (
@@ -52,6 +64,11 @@ export default async function AccountPage({
       {justBooked && (
         <p className="border-signal text-signal mb-8 border-l-2 pl-3 text-sm" role="status">
           Записали. Ждём вас — до встречи в салоне.
+        </p>
+      )}
+      {justCancelled && (
+        <p className="border-signal text-signal mb-8 border-l-2 pl-3 text-sm" role="status">
+          Отменили запись.
         </p>
       )}
 
