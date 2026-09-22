@@ -109,19 +109,32 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       )}
 
       <nav aria-label="Выбор услуги" className="mb-8">
-        <ul className="flex flex-wrap gap-2">
+        <p className="text-muted text-xs">Шаг 1 · Услуга</p>
+        <p className="mb-3 text-sm">
+          Выберите услугу — от неё зависит, у кого и когда есть свободное
+          время.
+        </p>
+
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
           {services.map((service) => {
             const active = service.id === serviceId;
 
             return (
               <li key={service.id}>
                 <Link
-                  className={`chip ${active ? "chip--active" : ""}`}
+                  className={`service-card ${active ? "service-card--active" : ""}`}
                   href={link({ service: active ? null : service.id })}
                   aria-current={active ? "true" : undefined}
                 >
-                  {service.title}
-                  <span className="chip-meta">
+                  <span className="service-card-title">
+                    {service.title}
+                    {active && (
+                      <span className="service-card-check" aria-hidden="true">
+                        ✓
+                      </span>
+                    )}
+                  </span>
+                  <span className="service-card-meta">
                     {service.durationMin} мин · {service.priceLabel}
                   </span>
                 </Link>
@@ -131,13 +144,16 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         </ul>
       </nav>
 
-      <DayRibbon schedule={schedule} serviceId={serviceId} />
+      <div className="mb-3">
+        <p className="text-muted text-xs">Шаг 2 · Время</p>
+        <p className={`text-sm ${serviceId ? "" : "text-muted"}`}>
+          {serviceId
+            ? "Нажмите на свободное время, чтобы записаться. Штриховка — время, когда мастер недоступен."
+            : "Станет доступно, когда вы выберете услугу выше."}
+        </p>
+      </div>
 
-      <p className="text-muted mt-8 text-xs">
-        {serviceId
-          ? "Нажмите на свободное время, чтобы записаться. Штриховка — время, когда мастер недоступен."
-          : "Выберите услугу выше, чтобы увидеть свободное время. Штриховка — время, когда мастер недоступен."}
-      </p>
+      <DayRibbon schedule={schedule} serviceId={serviceId} />
     </main>
   );
 }

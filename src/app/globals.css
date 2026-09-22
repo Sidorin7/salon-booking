@@ -356,6 +356,48 @@
   .chip--busy:hover {
     box-shadow: inset 0 0 0 1px var(--color-sand);
   }
+
+  /* Выбор услуги: карточки в сетке — первый шаг сценария, поэтому
+     крупнее и заметнее чипа. Выбранная карточка использует --color-signal,
+     тот же акцент, что и у выбранного слота времени дальше по сценарию. */
+  .service-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-slot);
+    box-shadow: inset 0 0 0 1px var(--color-sand);
+  }
+
+  .service-card:hover {
+    box-shadow: inset 0 0 0 1px var(--color-ink);
+  }
+
+  .service-card--active {
+    background-color: var(--color-signal-soft);
+    box-shadow: inset 0 0 0 1.5px var(--color-signal);
+  }
+
+  .service-card--active:hover {
+    box-shadow: inset 0 0 0 1.5px var(--color-signal);
+  }
+
+  .service-card-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: var(--text-sm);
+  }
+
+  .service-card-check {
+    color: var(--color-signal);
+  }
+
+  .service-card-meta {
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+  }
 }
 
 /*
