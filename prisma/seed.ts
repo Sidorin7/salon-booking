@@ -353,9 +353,67 @@ async function main() {
     created += 1;
   }
 
+  // 6. История: завершённые визиты за прошлые HISTORY_DAYS дней —
+  //    чтобы аналитике (и салона, и отдельного мастера) было что
+  //    показывать. Записи из шага 5 все ещё предстоящие (CONFIRMED),
+  //    а выручка считается только по COMPLETED — без истории график
+  //    и сводка стояли бы на нулях.
+  //
+  //    По одной записи на каждый рабочий день каждого мастера, время —
+  //    начало смены: прошлые дни не пересекаются ни друг с другом
+  //    (разные календарные дни), ни с записями из шага 5 (те — сегодня
+  //    и завтра), так что EXCLUDE-констрейнт тут не в игре и можно
+  //    писать без проверки занятости, в отличие от шага 5.
+  const HISTORY_DAYS = 90;
+  let historyCreated = 0;
+  let historyCancelled = 0;
+
+  for (const master of masters) {
+    const serviceKeys = master.services;
+
+    for (let offset = 1; offset <= HISTORY_DAYS; offset += 1) {
+      const dayKey = shiftDayKey(today, -offset);
+      const weekday = weekdayOfDayKey(dayKey);
+      const block = master.schedule.find((b) =>
+        b.weekdays.some((day) => day === weekday),
+      );
+
+      if (!block) continue; // выходной по графику
+
+      const serviceKey = serviceKeys[offset % serviceKeys.length];
+      const service = serviceByKey.get(serviceKey)!;
+      const shiftLen = block.endMin - block.startMin;
+
+      if (service.durationMin > shiftLen) continue; // услуга не влезает в смену
+
+      const startsAt = salonWallClockToUtc(dayKey, block.startMin, SALON_TIMEZONE); // prettier-ignore
+      // Каждый седьмой визит — отменённый: аналитике нужна не только
+      // выручка, но и ненулевая доля отмен.
+      const cancelled = offset % 7 === 0;
+
+      await prisma.appointment.create({
+        data: {
+          masterId: masterByKey.get(master.key)!.id,
+          clientId: clientRecords[offset % clientRecords.length].id,
+          serviceId: service.id,
+          startsAt,
+          endsAt: new Date(startsAt.getTime() + service.durationMin * MINUTE_MS), // prettier-ignore
+          status: cancelled ? "CANCELLED" : "COMPLETED",
+          priceKopecksAtBooking: service.priceKopecks,
+          durationMinAtBooking: service.durationMin,
+        },
+      });
+
+      if (cancelled) historyCancelled += 1;
+      else historyCreated += 1;
+    }
+  }
+
   console.log(
     `Готово: ${services.length} услуг, ${masters.length} мастера, ` +
-      `${clients.length} клиента, 1 администратор, ${created} записей.`,
+      `${clients.length} клиента, 1 администратор, ${created} записей, ` +
+      `${historyCreated} завершённых визитов за историю (${HISTORY_DAYS} дней), ` +
+      `${historyCancelled} отменённых.`,
   );
   console.log(`Вход в любую учётку: <имя>@${TEST_EMAIL_DOMAIN} / ${TEST_PASSWORD}`); // prettier-ignore
 }
