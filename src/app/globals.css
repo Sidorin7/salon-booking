@@ -107,6 +107,37 @@
   включая мобильный брейкпоинт.
 */
 @layer components {
+  /* Пока не выбрана услуга, лента — не действующий интерфейс, а
+     превью «как это будет выглядеть». Гасим её целиком, а не просто
+     скрываем слоты, — иначе колонки мастеров выглядят как уже рабочий
+     экран, и подсказка над лентой остаётся единственным, что об этом
+     говорит. */
+  .ribbon-disabled {
+    opacity: 0.45;
+    filter: grayscale(1);
+    pointer-events: none;
+  }
+
+  /* Надпись поверх приглушённой ленты. Свой фон и обводка — как у
+     чипа, — чтобы текст читался поверх серых колонок мастеров. */
+  .ribbon-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ribbon-overlay-text {
+    padding: 0.5rem 1rem;
+    font-size: var(--text-sm);
+    color: var(--color-ink);
+    background-color: var(--color-paper);
+    border-radius: var(--radius-slot);
+    box-shadow: inset 0 0 0 1px var(--color-sand);
+  }
+
   /* Перевод «минут дня» в пиксели — общая для всех правил формула. */
   .ribbon-scale {
     --ribbon-offset: calc(var(--from) * var(--ribbon-px-per-min) * 1px);
@@ -397,6 +428,91 @@
   .service-card-meta {
     font-size: var(--text-xs);
     color: var(--color-muted);
+  }
+
+  /*
+    Полоса дней недели над лентой. Ячейка — данные, а не разовое
+    действие (как карточка услуги), поэтому радиус --radius-slot,
+    а не пилюля: радиус в проекте кодирует роль элемента.
+  */
+  .day-strip {
+    display: flex;
+    flex: 1;
+    gap: 0.75rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Флекс-дети .day-strip — это <li>, а не сама ссылка: без роста
+     самого <li> ячейки жались бы к левому краю, оставляя пустоту
+     перед правой стрелкой вместо равномерного заполнения ширины. */
+  .day-strip > li {
+    display: flex;
+    flex: 1 1 5rem;
+  }
+
+  .day-cell {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0.5rem;
+    border-radius: var(--radius-slot);
+    box-shadow: inset 0 0 0 1px var(--color-sand);
+  }
+
+  /* На широком экране места хватает — ячейки растягиваются в ширину,
+     а не в высоту: высота остаётся той же, что и на мобильном. */
+  @media (min-width: 640px) {
+    .day-cell {
+      padding-inline: 1rem;
+    }
+  }
+
+  .day-cell:hover {
+    box-shadow: inset 0 0 0 1px var(--color-ink);
+  }
+
+  .day-cell--active {
+    background-color: var(--color-signal-soft);
+    box-shadow: inset 0 0 0 1.5px var(--color-signal);
+  }
+
+  .day-cell--active:hover {
+    box-shadow: inset 0 0 0 1.5px var(--color-signal);
+  }
+
+  /* Сегодня, но не выбран: точка под числом вместо заливки —
+     тот же приём, что у отметки «сейчас» в ленте (.ribbon-now). */
+  .day-cell--today .day-cell-number {
+    position: relative;
+  }
+
+  .day-cell--today .day-cell-number::after {
+    content: "";
+    position: absolute;
+    bottom: -0.3rem;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    background-color: var(--color-signal);
+    border-radius: 9999px;
+    transform: translateX(-50%);
+  }
+
+  .day-cell-weekday {
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+    text-transform: lowercase;
+  }
+
+  .day-cell-number {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    color: var(--color-ink);
   }
 }
 

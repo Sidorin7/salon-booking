@@ -123,7 +123,19 @@ export function DayRibbon({
         </ul>
       )}
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="relative">
+      {/* Декоративный дубль текстовой подсказки над лентой — та уже
+          доступна скринридеру, здесь только для тех, кто читает
+          глазами саму ленту, а не подпись над ней. */}
+      {!serviceId && (
+        <div className="ribbon-overlay" aria-hidden="true">
+          <p className="ribbon-overlay-text">Сначала выберите услугу</p>
+        </div>
+      )}
+
+      <div
+        className={`flex gap-4 overflow-x-auto pb-4 ${serviceId ? "" : "ribbon-disabled"}`}
+      >
       {/* Часовая линейка. aria-hidden: цифры «10, 11, 12» без контекста
           только засоряют озвучку — время каждого блока и так названо. */}
       <div
@@ -203,6 +215,7 @@ export function DayRibbon({
           </div>
         </section>
       ))}
+      </div>
       </div>
     </>
   );

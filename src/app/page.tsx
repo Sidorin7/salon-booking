@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { DayRibbon } from "@/components/day-ribbon";
+import { DayStrip } from "@/components/day-strip";
 import { SALON_TIMEZONE } from "@/lib/salon";
 import { getDaySchedule } from "@/services/schedule";
 import { getActiveServices } from "@/services/catalog";
-import { salonDayKey, shiftDayKey } from "@/domain/scheduling/salon-time";
+import {
+  eachDayKey,
+  salonDayKey,
+  shiftDayKey,
+  weekdayOfDayKey,
+} from "@/domain/scheduling/salon-time";
 
 /*
   Экран дня: лента занятости и, если выбрана услуга, свободные слоты.
@@ -68,6 +74,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     return `/?${query}`;
   };
 
+  // Неделя, содержащая выбранный день, с понедельника (0=вс..6=сб → сдвиг
+  // до ближайшего предыдущего понедельника).
+  const mondayOffset = (weekdayOfDayKey(dayKey) + 6) % 7;
+  const weekStart = shiftDayKey(dayKey, -mondayOffset);
+  const week = eachDayKey(weekStart, shiftDayKey(weekStart, 6));
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <header className="mb-8 flex flex-wrap items-baseline justify-between gap-4">
@@ -76,31 +88,26 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <h1 className="text-xl first-letter:uppercase">{dayTitle(dayKey)}</h1>
         </div>
 
-        <nav aria-label="Выбор дня" className="flex items-center gap-2">
+        {dayKey !== today && (
           <Link
             className="border-sand hover:border-ink rounded-full border px-3 py-1 text-sm"
-            href={link({ date: shiftDayKey(dayKey, -1) })}
-            aria-label="Предыдущий день"
+            href={link({ date: today })}
           >
-            ←
+            Сегодня
           </Link>
-          {dayKey !== today && (
-            <Link
-              className="border-sand hover:border-ink rounded-full border px-3 py-1 text-sm"
-              href={link({ date: today })}
-            >
-              Сегодня
-            </Link>
-          )}
-          <Link
-            className="border-sand hover:border-ink rounded-full border px-3 py-1 text-sm"
-            href={link({ date: shiftDayKey(dayKey, 1) })}
-            aria-label="Следующий день"
-          >
-            →
-          </Link>
-        </nav>
+        )}
       </header>
+
+      <nav aria-label="Выбор дня" className="mb-8">
+        <DayStrip
+          days={week}
+          selectedDayKey={dayKey}
+          todayKey={today}
+          linkFor={(d) => link({ date: d })}
+          prevWeekHref={link({ date: shiftDayKey(weekStart, -7) })}
+          nextWeekHref={link({ date: shiftDayKey(weekStart, 7) })}
+        />
+      </nav>
 
       {error && (
         <p className="form-error" role="alert">
